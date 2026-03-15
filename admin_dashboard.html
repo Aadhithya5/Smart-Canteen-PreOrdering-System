@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Smart Canteen — Admin Dashboard</title>
+  <link rel="stylesheet" href="../css/style.css" />
+</head>
+<body>
+
+<!-- Navigation -->
+<header class="navbar">
+  <a href="admin_dashboard.html" class="brand">🍽️ Smart Canteen Admin</a>
+  <nav>
+    <a href="#menuSection" class="active">Menu</a>
+    <a href="#ordersSection">Orders</a>
+    <a href="index.html" onclick="sessionStorage.clear()">Logout</a>
+  </nav>
+</header>
+
+<main class="page-wrapper">
+
+  <!-- Alert -->
+  <div id="alertBox"></div>
+
+  <!-- ── Stats Row ─────────────────────────────────────── -->
+  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:1rem;margin-bottom:2rem">
+    <div class="card" style="text-align:center;padding:1.2rem">
+      <div style="font-size:2rem">🍽️</div>
+      <div style="font-size:1.6rem;font-weight:700;color:var(--primary)" id="statItems">—</div>
+      <div style="font-size:.82rem;color:var(--text-light)">Menu Items</div>
+    </div>
+    <div class="card" style="text-align:center;padding:1.2rem">
+      <div style="font-size:2rem">📋</div>
+      <div style="font-size:1.6rem;font-weight:700;color:var(--secondary)" id="statOrders">—</div>
+      <div style="font-size:.82rem;color:var(--text-light)">Total Orders</div>
+    </div>
+    <div class="card" style="text-align:center;padding:1.2rem">
+      <div style="font-size:2rem">⏳</div>
+      <div style="font-size:1.6rem;font-weight:700;color:#ffc107" id="statPending">—</div>
+      <div style="font-size:.82rem;color:var(--text-light)">Pending</div>
+    </div>
+    <div class="card" style="text-align:center;padding:1.2rem">
+      <div style="font-size:2rem">✅</div>
+      <div style="font-size:1.6rem;font-weight:700;color:var(--success)" id="statCompleted">—</div>
+      <div style="font-size:.82rem;color:var(--text-light)">Completed</div>
+    </div>
+  </div>
+
+  <!-- ── Menu Management ───────────────────────────────── -->
+  <section id="menuSection" class="card" style="margin-bottom:2rem">
+    <div class="section-header">
+      <h2>🍴 Menu Management</h2>
+      <button class="btn btn-primary" onclick="openAddModal()">+ Add Item</button>
+    </div>
+    <div style="overflow-x:auto">
+      <table class="admin-table" id="menuTable">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Name</th>
+            <th>Category</th>
+            <th>Price</th>
+            <th>Available</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="menuTableBody">
+          <tr><td colspan="6" style="text-align:center;padding:1.5rem">Loading…</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ── Orders Management ─────────────────────────────── -->
+  <section id="ordersSection" class="card">
+    <div class="section-header">
+      <h2>📋 All Orders</h2>
+      <button class="btn btn-secondary btn-sm" onclick="loadOrders()">🔄 Refresh</button>
+    </div>
+    <div style="overflow-x:auto">
+      <table class="admin-table" id="ordersTable">
+        <thead>
+          <tr>
+            <th>Order ID</th>
+            <th>Student</th>
+            <th>Total</th>
+            <th>Status</th>
+            <th>Time</th>
+            <th>Update Status</th>
+          </tr>
+        </thead>
+        <tbody id="ordersTableBody">
+          <tr><td colspan="6" style="text-align:center;padding:1.5rem">Loading…</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+</main>
+
+<!-- ── Add / Edit Modal ──────────────────────────────────── -->
+<div class="modal-overlay" id="itemModal">
+  <div class="modal-box">
+    <button class="modal-close" onclick="closeModal()">✕</button>
+    <h3 id="modalTitle" style="margin-bottom:1.2rem">Add Menu Item</h3>
+
+    <form id="itemForm" method="post">
+      <input type="hidden" name="action" id="formAction" value="add" />
+      <input type="hidden" name="itemId" id="formItemId" />
+
+      <div class="form-group">
+        <label>Item Name</label>
+        <input type="text" name="itemName" id="fName" required placeholder="e.g. Veg Biryani" />
+      </div>
+      <div class="form-group">
+        <label>Description</label>
+        <input type="text" name="description" id="fDesc" placeholder="Short description" />
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem">
+        <div class="form-group">
+          <label>Price (₹)</label>
+          <input type="number" name="price" id="fPrice" min="1" step="0.50" required />
+        </div>
+        <div class="form-group">
+          <label>Category</label>
+          <select name="category" id="fCategory">
+            <option>Breakfast</option>
+            <option>Lunch</option>
+            <option>Snacks</option>
+            <option>Beverages</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group" id="availGroup" style="display:none">
+        <label>Availability</label>
+        <select name="isAvailable" id="fAvailable">
+          <option value="1">✅ Available</option>
+          <option value="0">❌ Unavailable</option>
+        </select>
+      </div>
+
+      <button type="submit" class="btn btn-primary btn-full">Save Item</button>
+    </form>
+  </div>
+</div>
+
+<script>
+  const STATUS_FLOW = ['Pending','Preparing','Ready','Completed','Cancelled'];
+  const BADGE_CLASS = {
+    Pending:'badge-pending', Preparing:'badge-preparing',
+    Ready:'badge-ready', Completed:'badge-completed', Cancelled:'badge-cancelled'
+  };
+
+  // ── Load menu ──────────────────────────────────────────────────
+  async function loadMenu() {
+    const resp = await fetch('../../adminMenu');
+    if (resp.redirected) { window.location = resp.url; return; }
+    const items = await resp.json();
+
+    document.getElementById('statItems').textContent = items.length;
+
+    const tbody = document.getElementById('menuTableBody');
+    if (!items.length) {
+      tbody.innerHTML = '<tr><td colspan="6" style="text-align:center">No items yet.</td></tr>';
+      return;
+    }
+    tbody.innerHTML = items.map((it,i) => `
+      <tr>
+        <td>${i+1}</td>
+        <td><strong>${it.itemName}</strong><br><small style="color:var(--text-light)">${it.description||''}</small></td>
+        <td>${it.category}</td>
+        <td>₹${it.price.toFixed(2)}</td>
+        <td>
+          <span class="badge ${it.available ? 'badge-ready' : 'badge-cancelled'}">
+            ${it.available ? 'Yes' : 'No'}
+          </span>
+        </td>
+        <td style="display:flex;gap:.4rem;flex-wrap:wrap">
+          <button class="btn btn-secondary btn-sm" onclick='openEditModal(${JSON.stringify(it)})'>✏️ Edit</button>
+          <button class="btn btn-sm" style="background:#f0f4ff;color:var(--secondary)"
+                  onclick="toggleAvail(${it.itemId})">🔄 Toggle</button>
+          <button class="btn btn-danger btn-sm" onclick="deleteItem(${it.itemId})">🗑</button>
+        </td>
+      </tr>`).join('');
+  }
+
+  // ── Load orders ────────────────────────────────────────────────
+  async function loadOrders() {
+    const resp = await fetch('../../orderStatus');
+    if (resp.redirected) { window.location = resp.url; return; }
+    const orders = await resp.json();
+
+    document.getElementById('statOrders').textContent   = orders.length;
+    document.getElementById('statPending').textContent  = orders.filter(o => o.status==='Pending').length;
+    document.getElementById('statCompleted').textContent= orders.filter(o => o.status==='Completed').length;
+
+    const tbody = document.getElementById('ordersTableBody');
+    if (!orders.length) {
+      tbody.innerHTML = '<tr><td colspan="6" style="text-align:center">No orders yet.</td></tr>';
+      return;
+    }
+    tbody.innerHTML = orders.map(o => `
+      <tr>
+        <td><strong>#${o.orderId}</strong></td>
+        <td>${o.student}</td>
+        <td>₹${o.total.toFixed(2)}</td>
+        <td><span class="badge ${BADGE_CLASS[o.status]}">${o.status}</span></td>
+        <td style="font-size:.82rem;color:var(--text-light)">${new Date(o.time).toLocaleString()}</td>
+        <td>
+          <form action="../../orderStatus" method="post" style="display:flex;gap:.4rem">
+            <input type="hidden" name="orderId" value="${o.orderId}" />
+            <select name="status" style="padding:.3rem;border-radius:5px;border:1px solid var(--border)">
+              ${STATUS_FLOW.map(s => `<option ${s===o.status?'selected':''}>${s}</option>`).join('')}
+            </select>
+            <button type="submit" class="btn btn-success btn-sm">✔</button>
+          </form>
+        </td>
+      </tr>`).join('');
+  }
+
+  // ── Modal helpers ──────────────────────────────────────────────
+  function openAddModal() {
+    document.getElementById('modalTitle').textContent = 'Add Menu Item';
+    document.getElementById('formAction').value = 'add';
+    document.getElementById('itemForm').action = '../../adminMenu';
+    document.getElementById('fName').value = '';
+    document.getElementById('fDesc').value = '';
+    document.getElementById('fPrice').value = '';
+    document.getElementById('availGroup').style.display = 'none';
+    document.getElementById('itemModal').classList.add('open');
+  }
+
+  function openEditModal(item) {
+    document.getElementById('modalTitle').textContent = 'Edit Menu Item';
+    document.getElementById('formAction').value = 'update';
+    document.getElementById('formItemId').value = item.itemId;
+    document.getElementById('itemForm').action = '../../adminMenu';
+    document.getElementById('fName').value     = item.itemName;
+    document.getElementById('fDesc').value     = item.description;
+    document.getElementById('fPrice').value    = item.price;
+    document.getElementById('fCategory').value = item.category;
+    document.getElementById('fAvailable').value= item.available;
+    document.getElementById('availGroup').style.display = 'block';
+    document.getElementById('itemModal').classList.add('open');
+  }
+
+  function closeModal() {
+    document.getElementById('itemModal').classList.remove('open');
+  }
+
+  async function deleteItem(id) {
+    if (!confirm('Delete this item?')) return;
+    const form = new FormData();
+    form.append('action', 'delete');
+    form.append('itemId', id);
+    await fetch('../../adminMenu', { method:'POST', body: form });
+    loadMenu();
+  }
+
+  async function toggleAvail(id) {
+    const form = new FormData();
+    form.append('action', 'toggle');
+    form.append('itemId', id);
+    await fetch('../../adminMenu', { method:'POST', body: form });
+    loadMenu();
+  }
+
+  // ── URL alert ─────────────────────────────────────────────────
+  const params = new URLSearchParams(window.location.search);
+  const alertBox = document.getElementById('alertBox');
+  if (params.get('success')) {
+    alertBox.innerHTML = '<div class="alert alert-success">✅ Operation completed successfully.</div>';
+    setTimeout(() => alertBox.innerHTML = '', 3000);
+  } else if (params.get('error') === 'db') {
+    alertBox.innerHTML = '<div class="alert alert-error">❌ Database error. Please try again.</div>';
+  }
+
+  // Initialise
+  loadMenu();
+  loadOrders();
+</script>
+
+</body>
+</html>

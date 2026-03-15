@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Smart Canteen — Order Placed!</title>
+  <link rel="stylesheet" href="../css/style.css" />
+</head>
+<body>
+
+<!-- Navigation -->
+<header class="navbar">
+  <a href="menu.html" class="brand">🍽️ Smart Canteen</a>
+  <nav>
+    <a href="menu.html">Menu</a>
+    <a href="index.html" onclick="sessionStorage.clear()">Logout</a>
+  </nav>
+</header>
+
+<div class="success-container">
+  <div class="success-box">
+
+    <div class="success-icon">🎉</div>
+    <h1>Order Placed!</h1>
+    <p>Your order has been received by the canteen and is being prepared.</p>
+
+    <div class="order-id-tag" id="orderIdDisplay">Order #—</div>
+
+    <!-- Status Timeline -->
+    <div style="margin:1.5rem 0;text-align:left">
+      <p style="font-weight:600;margin-bottom:.8rem;color:var(--secondary)">Order Status:</p>
+      <div id="statusTimeline" style="display:flex;gap:0;align-items:center;justify-content:center">
+        <!-- Rendered by JS -->
+      </div>
+    </div>
+
+    <div style="background:#f8f9fa;border-radius:8px;padding:1rem;margin-bottom:1.5rem;text-align:left;font-size:.9rem">
+      <div style="display:flex;justify-content:space-between;margin-bottom:.4rem">
+        <span style="color:var(--text-light)">Total Paid</span>
+        <strong id="totalDisplay">₹0.00</strong>
+      </div>
+      <div style="display:flex;justify-content:space-between">
+        <span style="color:var(--text-light)">Collect From</span>
+        <strong>Counter 1 — Smart Canteen</strong>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:.8rem;justify-content:center;flex-wrap:wrap">
+      <a href="menu.html" class="btn btn-primary">🍴 Order More</a>
+      <a href="orders.html" class="btn btn-secondary">📋 My Orders</a>
+    </div>
+
+    <p style="margin-top:1.5rem;font-size:.8rem;color:var(--text-light)">
+      You will be notified when your order is <strong>Ready for Pickup</strong>.
+    </p>
+
+  </div>
+</div>
+
+<script>
+  // Retrieve order info saved by OrderServlet via session
+  // (In a full implementation the servlet would set these as request attrs and
+  //  forward to a JSP. For this static HTML demo we read sessionStorage.)
+  const lastOrderId = sessionStorage.getItem('lastOrderId') || '—';
+  const lastTotal   = parseFloat(sessionStorage.getItem('lastOrderTotal') || 0);
+
+  document.getElementById('orderIdDisplay').textContent = 'Order #' + lastOrderId;
+  document.getElementById('totalDisplay').textContent   = '₹' + lastTotal.toFixed(2);
+
+  // Clear cart after successful order
+  sessionStorage.removeItem('cartData');
+
+  // Status timeline
+  const steps = ['Pending','Preparing','Ready','Completed'];
+  const colors = { Pending:'#ffc107', Preparing:'#17a2b8', Ready:'#28a745', Completed:'#6c757d' };
+  const icons  = { Pending:'⏳', Preparing:'👨‍🍳', Ready:'✅', Completed:'🎊' };
+  const currentStatus = 'Pending';  // Always starts Pending
+
+  const timeline = document.getElementById('statusTimeline');
+  timeline.innerHTML = steps.map((step, i) => {
+    const active = steps.indexOf(currentStatus) >= i;
+    return `
+      <div style="text-align:center;flex:1">
+        <div style="width:36px;height:36px;border-radius:50%;
+             background:${active ? colors[step] : '#e0e4eb'};
+             display:flex;align-items:center;justify-content:center;
+             margin:0 auto .3rem;font-size:1.1rem">
+          ${active ? icons[step] : '·'}
+        </div>
+        <div style="font-size:.72rem;font-weight:${step===currentStatus?'700':'400'};
+             color:${step===currentStatus?'var(--text)':'var(--text-light)'}">
+          ${step}
+        </div>
+      </div>
+      ${i < steps.length-1
+        ? `<div style="height:2px;flex:.4;background:${active?'var(--primary)':'var(--border)'};margin-bottom:1.5rem"></div>`
+        : ''}`;
+  }).join('');
+</script>
+
+</body>
+</html>

@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Smart Canteen — Cart</title>
+  <link rel="stylesheet" href="../css/style.css" />
+</head>
+<body>
+
+<!-- Navigation Bar -->
+<header class="navbar">
+  <a href="menu.html" class="brand">🍽️ Smart Canteen</a>
+  <nav>
+    <a href="menu.html">Menu</a>
+    <a href="cart.html" class="active">Cart</a>
+    <a href="index.html" onclick="sessionStorage.clear()">Logout</a>
+  </nav>
+  <a href="cart.html" class="cart-icon">
+    🛒 <span class="cart-badge" id="cartCount">0</span>
+  </a>
+</header>
+
+<main class="page-wrapper">
+  <div class="section-header">
+    <h2>🛒 Your Cart</h2>
+    <a href="menu.html" class="btn btn-outline btn-sm">← Continue Shopping</a>
+  </div>
+
+  <div id="alertBox"></div>
+
+  <!-- Two-column layout: cart table + summary -->
+  <div style="display:grid;grid-template-columns:1fr 320px;gap:1.5rem;align-items:start">
+
+    <!-- Cart Items Table -->
+    <div class="card" style="padding:0;overflow:hidden">
+      <table class="cart-table" id="cartTable">
+        <thead>
+          <tr>
+            <th>Item</th>
+            <th>Price</th>
+            <th>Qty</th>
+            <th>Subtotal</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="cartBody">
+          <tr><td colspan="5" style="text-align:center;padding:2rem;color:var(--text-light)">Your cart is empty.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Order Summary + Checkout -->
+    <div>
+      <div class="cart-summary">
+        <h3 style="margin-bottom:1rem">Order Summary</h3>
+        <div class="summary-row"><span>Items</span><span id="sumItems">0</span></div>
+        <div class="summary-row"><span>Subtotal</span><span id="sumSubtotal">₹0.00</span></div>
+        <div class="summary-row"><span>Convenience fee</span><span>₹0.00</span></div>
+        <div class="summary-row total-row" style="border:none;margin-top:.5rem">
+          <span>Total</span><span id="sumTotal">₹0.00</span>
+        </div>
+      </div>
+
+      <!-- Checkout Form -->
+      <form action="../../order" method="post" id="checkoutForm"
+            style="margin-top:1rem" onsubmit="return confirmOrder()">
+        <div class="form-group">
+          <label>Payment Method</label>
+          <select name="paymentMethod">
+            <option value="Cash">💵 Cash at Counter</option>
+            <option value="UPI">📱 UPI</option>
+            <option value="Card">💳 Card</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Special Instructions (optional)</label>
+          <textarea name="notes" rows="2" style="width:100%;resize:none;border:1.5px solid var(--border);border-radius:7px;padding:.6rem"
+                    placeholder="e.g. Less spicy, extra chutney…"></textarea>
+        </div>
+        <button type="submit" id="placeOrderBtn" class="btn btn-primary btn-full" disabled>
+          🧾 Place Order
+        </button>
+      </form>
+
+      <button onclick="clearCart()" class="btn btn-outline btn-full"
+              style="margin-top:.7rem">
+        🗑️ Clear Cart
+      </button>
+    </div>
+
+  </div>
+</main>
+
+<script>
+  // Load cart from sessionStorage (set by menu.html)
+  let cart = JSON.parse(sessionStorage.getItem('cartData') || '{}');
+
+  function renderCart() {
+    const tbody  = document.getElementById('cartBody');
+    const keys   = Object.keys(cart);
+    const placeBtn = document.getElementById('placeOrderBtn');
+
+    if (!keys.length) {
+      tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:2rem;color:var(--text-light)">Your cart is empty. <a href="menu.html">Browse menu →</a></td></tr>';
+      placeBtn.disabled = true;
+      updateSummary(0, 0);
+      document.getElementById('cartCount').textContent = 0;
+      return;
+    }
+
+    let totalItems = 0, grand = 0;
+
+    tbody.innerHTML = keys.map(id => {
+      const item    = cart[id];
+      const subtotal = item.price * item.qty;
+      totalItems += item.qty;
+      grand      += subtotal;
+      return `
+        <tr>
+          <td><strong>${item.name}</strong></td>
+          <td>₹${item.price.toFixed(2)}</td>
+          <td>
+            <div class="qty-controls">
+              <button class="qty-btn" onclick="changeQty(${id}, -1)">−</button>
+              <span>${item.qty}</span>
+              <button class="qty-btn" onclick="changeQty(${id}, 1)">+</button>
+            </div>
+          </td>
+          <td>₹${subtotal.toFixed(2)}</td>
+          <td><button class="btn btn-danger btn-sm" onclick="removeItem(${id})">🗑</button></td>
+        </tr>`;
+    }).join('');
+
+    placeBtn.disabled = false;
+    updateSummary(totalItems, grand);
+    document.getElementById('cartCount').textContent = totalItems;
+  }
+
+  function updateSummary(items, total) {
+    document.getElementById('sumItems').textContent    = items;
+    document.getElementById('sumSubtotal').textContent = '₹' + total.toFixed(2);
+    document.getElementById('sumTotal').textContent    = '₹' + total.toFixed(2);
+  }
+
+  function changeQty(id, delta) {
+    if (!cart[id]) return;
+    cart[id].qty += delta;
+    if (cart[id].qty <= 0) delete cart[id];
+    save();
+
+    // Sync with server
+    const form = new FormData();
+    form.append('action', delta > 0 ? 'add' : 'remove');
+    form.append('itemId', id);
+    if (delta > 0) {
+      form.append('itemName', cart[id]?.name || '');
+      form.append('price',    cart[id]?.price || 0);
+    }
+    fetch('../../cart', { method:'POST', body: form });
+  }
+
+  function removeItem(id) {
+    delete cart[id];
+    save();
+    const form = new FormData();
+    form.append('action', 'remove');
+    form.append('itemId', id);
+    fetch('../../cart', { method:'POST', body: form });
+  }
+
+  function clearCart() {
+    if (!Object.keys(cart).length) return;
+    if (!confirm('Clear all items from cart?')) return;
+    cart = {};
+    save();
+    fetch('../../cart', { method:'POST', body: new URLSearchParams({action:'clear'}) });
+  }
+
+  function save() {
+    sessionStorage.setItem('cartData', JSON.stringify(cart));
+    renderCart();
+  }
+
+  function confirmOrder() {
+    return Object.keys(cart).length > 0;
+  }
+
+  // Show redirect alerts
+  const params = new URLSearchParams(window.location.search);
+  const alertBox = document.getElementById('alertBox');
+  if (params.get('error') === 'empty') {
+    alertBox.innerHTML = '<div class="alert alert-error">Cart is empty! Add items before ordering.</div>';
+  } else if (params.get('error') === 'order') {
+    alertBox.innerHTML = '<div class="alert alert-error">❌ Failed to place order. Please try again.</div>';
+  }
+
+  renderCart();
+</script>
+
+</body>
+</html>

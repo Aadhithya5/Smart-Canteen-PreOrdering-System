@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Smart Canteen — Login</title>
+  <link rel="stylesheet" href="../css/style.css" />
+</head>
+<body>
+
+<div class="auth-container">
+  <div class="auth-box">
+
+    <!-- Logo / Brand -->
+    <div class="logo">
+      <div style="font-size:3rem">🍽️</div>
+      <h1>Smart Canteen</h1>
+      <p>Pre-Order &amp; Skip the Queue</p>
+    </div>
+
+    <!-- Alert from redirect params -->
+    <div id="alertBox"></div>
+
+    <!-- Login Form -->
+    <form id="loginForm" action="../../login" method="post">
+
+      <div class="form-group">
+        <label for="email">College Email</label>
+        <input type="email" id="email" name="email"
+               placeholder="you@college.edu" required />
+      </div>
+
+      <div class="form-group">
+        <label for="password">Password</label>
+        <input type="password" id="password" name="password"
+               placeholder="••••••••" required />
+      </div>
+
+      <button type="submit" class="btn btn-primary btn-full" style="margin-top:.5rem">
+        🔐 Login
+      </button>
+
+    </form>
+
+    <p style="text-align:center;margin-top:1.2rem;font-size:.9rem;color:var(--text-light)">
+      Don't have an account?
+      <a href="register.html" style="color:var(--primary);font-weight:600">Register here</a>
+    </p>
+
+    <!-- Demo credentials hint -->
+    <div style="margin-top:1.5rem;padding:1rem;background:#f8f9fa;border-radius:8px;font-size:.82rem;color:var(--text-light)">
+      <strong>Demo credentials:</strong><br>
+      Student — arjun@college.edu / student123<br>
+      Admin &nbsp;&nbsp;— admin@canteen.com / admin123
+    </div>
+
+  </div>
+</div>
+
+<script>
+  // Show alert based on URL query parameter
+  const params = new URLSearchParams(window.location.search);
+  const alertBox = document.getElementById('alertBox');
+
+  if (params.get('error') === 'invalid') {
+    alertBox.innerHTML = '<div class="alert alert-error">❌ Invalid email or password. Please try again.</div>';
+  } else if (params.get('error') === 'session') {
+    alertBox.innerHTML = '<div class="alert alert-info">🔒 Please log in to continue.</div>';
+  } else if (params.get('error') === 'unauthorized') {
+    alertBox.innerHTML = '<div class="alert alert-error">⛔ Access denied.</div>';
+  } else if (params.get('registered') === 'true') {
+    alertBox.innerHTML = '<div class="alert alert-success">✅ Registration successful! Please log in.</div>';
+  }
+</script>
+
+</body>
+</html>

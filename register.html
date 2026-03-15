@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Smart Canteen — Register</title>
+  <link rel="stylesheet" href="../css/style.css" />
+</head>
+<body>
+
+<div class="auth-container">
+  <div class="auth-box">
+
+    <div class="logo">
+      <div style="font-size:3rem">📝</div>
+      <h1>Create Account</h1>
+      <p>Join the Smart Canteen system</p>
+    </div>
+
+    <!-- Alert messages -->
+    <div id="alertBox"></div>
+
+    <!-- Registration Form -->
+    <form id="registerForm" action="../../register" method="post" onsubmit="return validate()">
+
+      <div class="form-group">
+        <label for="fullName">Full Name</label>
+        <input type="text" id="fullName" name="fullName"
+               placeholder="Arjun Sharma" required minlength="3" />
+      </div>
+
+      <div class="form-group">
+        <label for="email">College Email</label>
+        <input type="email" id="email" name="email"
+               placeholder="you@college.edu" required />
+      </div>
+
+      <div class="form-group">
+        <label for="phone">Phone Number</label>
+        <input type="tel" id="phone" name="phone"
+               placeholder="9876543210" pattern="[0-9]{10}" required />
+      </div>
+
+      <div class="form-group">
+        <label for="password">Password</label>
+        <input type="password" id="password" name="password"
+               placeholder="Minimum 6 characters" minlength="6" required />
+      </div>
+
+      <div class="form-group">
+        <label for="confirmPassword">Confirm Password</label>
+        <input type="password" id="confirmPassword"
+               placeholder="Re-enter password" required />
+      </div>
+
+      <button type="submit" class="btn btn-primary btn-full" style="margin-top:.5rem">
+        ✅ Register
+      </button>
+
+    </form>
+
+    <p style="text-align:center;margin-top:1.2rem;font-size:.9rem;color:var(--text-light)">
+      Already have an account?
+      <a href="index.html" style="color:var(--primary);font-weight:600">Login here</a>
+    </p>
+
+  </div>
+</div>
+
+<script>
+  // Show server-side error alerts
+  const params = new URLSearchParams(window.location.search);
+  const alertBox = document.getElementById('alertBox');
+
+  if (params.get('error') === 'duplicate') {
+    alertBox.innerHTML = '<div class="alert alert-error">⚠️ This email is already registered. <a href="index.html">Login</a></div>';
+  } else if (params.get('error') === 'empty') {
+    alertBox.innerHTML = '<div class="alert alert-error">⚠️ All fields are required.</div>';
+  } else if (params.get('error') === 'db') {
+    alertBox.innerHTML = '<div class="alert alert-error">❌ A database error occurred. Please try again.</div>';
+  }
+
+  // Client-side validation before form submit
+  function validate() {
+    const pwd  = document.getElementById('password').value;
+    const cpwd = document.getElementById('confirmPassword').value;
+    if (pwd !== cpwd) {
+      alertBox.innerHTML = '<div class="alert alert-error">⚠️ Passwords do not match.</div>';
+      return false;
+    }
+    return true;
+  }
+</script>
+
+</body>
+</html>

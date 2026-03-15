@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Smart Canteen — Menu</title>
+  <link rel="stylesheet" href="../css/style.css" />
+</head>
+<body>
+
+<!-- Navigation Bar -->
+<header class="navbar">
+  <a href="menu.html" class="brand">🍽️ Smart Canteen</a>
+  <nav>
+    <a href="menu.html" class="active">Menu</a>
+    <a href="cart.html">Cart</a>
+    <a href="index.html" onclick="logout()">Logout</a>
+  </nav>
+  <a href="cart.html" class="cart-icon">
+    🛒 <span class="cart-badge" id="cartCount">0</span>
+  </a>
+</header>
+
+<!-- Page Content -->
+<main class="page-wrapper">
+
+  <div class="section-header">
+    <h2>🍴 Today's Menu</h2>
+    <span id="welcomeMsg" style="color:var(--text-light);font-size:.9rem"></span>
+  </div>
+
+  <!-- Category Filter Tabs -->
+  <div class="category-tabs">
+    <button class="tab-btn active" onclick="filterMenu('all', this)">All</button>
+    <button class="tab-btn" onclick="filterMenu('Breakfast', this)">🌅 Breakfast</button>
+    <button class="tab-btn" onclick="filterMenu('Lunch', this)">☀️ Lunch</button>
+    <button class="tab-btn" onclick="filterMenu('Snacks', this)">🍟 Snacks</button>
+    <button class="tab-btn" onclick="filterMenu('Beverages', this)">🥤 Beverages</button>
+  </div>
+
+  <!-- Alert messages -->
+  <div id="alertBox"></div>
+
+  <!-- Menu Grid rendered by JS -->
+  <div class="menu-grid" id="menuGrid">
+    <p style="color:var(--text-light)">Loading menu…</p>
+  </div>
+
+</main>
+
+<!-- Add-to-Cart Toast -->
+<div id="toast" style="
+  position:fixed;bottom:1.5rem;right:1.5rem;
+  background:var(--secondary);color:#fff;
+  padding:.7rem 1.2rem;border-radius:8px;
+  font-size:.9rem;opacity:0;transition:opacity .3s;pointer-events:none;z-index:300;">
+</div>
+
+<script>
+  // ── Cart stored in sessionStorage for quick badge updates ───────
+  let cart = JSON.parse(sessionStorage.getItem('cartData') || '{}');
+  updateBadge();
+
+  // ── Fetch menu from servlet ─────────────────────────────────────
+  let allItems = [];
+
+  async function loadMenu() {
+    try {
+      const resp = await fetch('../../menu');
+      if (resp.redirected) { window.location = resp.url; return; }
+      allItems = await resp.json();
+      renderMenu(allItems);
+    } catch(e) {
+      document.getElementById('menuGrid').innerHTML =
+        '<p class="alert alert-error">Failed to load menu. Please try again.</p>';
+    }
+  }
+
+  function renderMenu(items) {
+    const grid = document.getElementById('menuGrid');
+    if (!items.length) {
+      grid.innerHTML = '<p style="color:var(--text-light)">No items in this category right now.</p>';
+      return;
+    }
+
+    // Emoji map by category
+    const emoji = { Breakfast:'🥞', Lunch:'🍛', Snacks:'🍟', Beverages:'🥤' };
+
+    grid.innerHTML = items.map(item => `
+      <div class="menu-card" data-category="${item.category}">
+        <div class="img-placeholder">${emoji[item.category] || '🍽️'}</div>
+        <div class="card-body">
+          <div class="item-name">${item.itemName}</div>
+          <div class="item-desc">${item.description || ''}</div>
+          <div class="item-footer">
+            <span class="price">₹${item.price.toFixed(2)}</span>
+            ${item.available
+              ? `<button class="btn btn-primary btn-sm"
+                   onclick="addToCart(${item.itemId}, '${escapeHtml(item.itemName)}', ${item.price})">
+                   + Add
+                 </button>`
+              : `<span class="unavailable-badge">Unavailable</span>`}
+          </div>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  function filterMenu(category, btn) {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    renderMenu(category === 'all' ? allItems : allItems.filter(i => i.category === category));
+  }
+
+  // ── Cart operations (client-side, synced to server on order) ──
+  function addToCart(itemId, name, price) {
+    if (cart[itemId]) {
+      cart[itemId].qty += 1;
+    } else {
+      cart[itemId] = { name, price, qty: 1 };
+    }
+    sessionStorage.setItem('cartData', JSON.stringify(cart));
+    updateBadge();
+    showToast(`✅ ${name} added to cart`);
+
+    // Also POST to CartServlet to keep session cart in sync
+    const form = new FormData();
+    form.append('action',   'add');
+    form.append('itemId',   itemId);
+    form.append('itemName', name);
+    form.append('price',    price);
+    fetch('../../cart', { method:'POST', body: form });
+  }
+
+  function updateBadge() {
+    const total = Object.values(cart).reduce((s, i) => s + i.qty, 0);
+    document.getElementById('cartCount').textContent = total;
+  }
+
+  function showToast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.style.opacity = '1';
+    setTimeout(() => t.style.opacity = '0', 2000);
+  }
+
+  function escapeHtml(s) {
+    return s.replace(/'/g,"\'").replace(/"/g,'&quot;');
+  }
+
+  function logout() {
+    sessionStorage.clear();
+    fetch('../../logout');
+  }
+
+  loadMenu();
+</script>
+
+</body>
+</html>
